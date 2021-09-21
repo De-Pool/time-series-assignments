@@ -1,10 +1,14 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
+import helper_functions
 
-# data is an array, each row (first index) contains an array of length 2
-# that array has as first index the year + quarter (string) and as second index the GDP (float)
-# data[i][1] -> the GDP of the i-th row
-file = './data.csv'
-data = pd.read_csv(file, delimiter=',', names=['year', 'gdp'], skiprows=1)
-print(data)
+# data is a dataframe, first column is year, second column is GDP
+data = pd.read_csv('./data.csv', delimiter=',', names=['year', 'gdp'], skiprows=1)
+
+# Opdracht 1
+# acfs is an array with [0, acf(1), acf(2), ..., acf(period)]
+acfs = helper_functions.sample_acf(data, period=12)
+plt.bar(np.arange(1, len(acfs)), acfs[1:])
+plt.show()
