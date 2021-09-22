@@ -12,3 +12,8 @@ data = pd.read_csv('./data.csv', delimiter=',', names=['year', 'gdp'], skiprows=
 acfs = helper_functions.sample_acf(data, period=12)
 plt.bar(np.arange(1, len(acfs)), acfs[1:])
 plt.show()
+
+# pacfs is an array with [pacf(0), pacf(1), pacf(2), ..., pacf(period)]
+pacfs = helper_functions.sample_pacf(data, period=12)
+plt.bar(np.arange(0, len(pacfs)), pacfs)
+plt.show()
