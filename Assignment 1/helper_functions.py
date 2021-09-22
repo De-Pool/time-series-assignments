@@ -32,15 +32,14 @@ def pautocorr(data, lag):
     elif lag == 1:
         # pacf(1) = autocov(1) / variance
         return autocov(data, 1)[0][1] / autocov(data, 0)[0][0]
+
     # X is a matrix of m x n where m = len(X) - lag, n = lag + 1
     X = np.zeros((len(data) - lag, lag + 1))
-    Xt = data.iloc[:len(data) - lag, 1].values
-    for i in range(lag + 1):
-        if i == 0:
-            X[:, i] = np.ones(len(data) - lag)
-        else:
-            X[:, i] = data.iloc[i:len(data) - lag + i, 1].values
+    X[:, 0] = np.ones(len(data) - lag)
+    for i in range(1, lag + 1):
+        X[:, i] = data.iloc[i:len(data) - lag + i, 1].values
 
+    Xt = data.iloc[:len(data) - lag, 1].values
     # np.linalg.lstsq returns solution, residuals, rank, singular values
     B_hat, _, _, _ = np.linalg.lstsq(X, Xt, rcond=None)
     return B_hat[lag]
