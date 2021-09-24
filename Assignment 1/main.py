@@ -18,8 +18,8 @@ tsplots.plot_pacf(data['gdp'], lags=12, zero=False)
 plt.show()
 
 # Opdracht 2
-# Set beta to 0 for a deterministic result. -> (lags = [1, 2, 7, 9, 12, 18, 30])
-lags = helper_functions.significant_lags(data, alpha=0.05, lags=np.arange(1, 31), beta=0)
+# Set beta to 0 for a deterministic result. -> (lags = [1, 3, 22])
+lags = helper_functions.significant_lags(data, alpha=0.05, lags=np.arange(1, 25), beta=0)
 p = len(lags)
 ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0))
 ar_model_fit = ar_model.fit()
@@ -49,7 +49,6 @@ plt.show()
 
 # Opdracht 5
 ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
-# forecast() returns: forecast, stderr, conf_int
 forecast = ar_model.get_forecast(8)
 confidence_interval = forecast.conf_int(0.05)
 result = forecast.prediction_results.results.forecasts[0]
