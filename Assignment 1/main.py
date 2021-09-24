@@ -8,7 +8,6 @@ import helper_functions
 # data is a dataframe, first column is year, second column is GDP
 data = pd.read_csv('./data.csv', delimiter=',', names=['year', 'gdp'], skiprows=1)
 data['datetime'] = pd.to_datetime(data['year'])
-fig, ax = plt.subplots()
 
 # Opdracht 1
 plt.title("GDP over time")
@@ -24,10 +23,11 @@ p = len(lags)
 ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0))
 ar_model_fit = ar_model.fit()
 print(ar_model_fit.summary())
+
 fittedValues = ar_model_fit.fittedvalues.values
-ax.plot(data['datetime'], fittedValues, label="Fitted AR(" + str(p) + ")  model")
-ax.plot(data['datetime'], data['gdp'], label="Data")
-ax.legend()
+plt.plot(data['datetime'], fittedValues, label="Fitted AR(" + str(p) + ")  model")
+plt.plot(data['datetime'], data['gdp'], label="Data")
+plt.legend()
 plt.show()
 
 # Opdracht 3

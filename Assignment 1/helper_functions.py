@@ -1,6 +1,36 @@
 import numpy as np
 import statsmodels.tsa.ar_model as ar
+import statsmodels.tsa.arima.model as arma
 import random
+import sklearn.metrics as sk
+import math
+
+
+def best_model_gs(data):
+    beta = [0.2, 0.5]
+    smallest_rmse = 1
+    best_params = []
+    print(rmse_lags(data, [1]))
+
+    for b in beta:
+        for i in range(1000):
+            lags = significant_lags(data, 0.05, np.arange(1, random.randint(10, 39)), b)
+            rmse = rmse_lags(data, lags)
+            if rmse < smallest_rmse:
+                best_params = [lags, rmse]
+                smallest_rmse = rmse
+                print(best_params)
+
+    return best_params
+
+
+def rmse_lags(data, lags):
+    ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+    forecast = ar_model.get_forecast(8)
+    result = forecast.prediction_results.results.forecasts[0]
+    actualData = [-1.63, 0.28, 0.33, 0.66, 1.59, 0.51, 0.71, 0.81]
+    mse = sk.mean_squared_error(actualData, result)
+    return math.sqrt(mse)
 
 
 # Greedy algorithm to find the best combination of lags.
@@ -83,7 +113,7 @@ def p_auto_corr(data, lag):
         return 1
     elif lag == 1:
         # pacf(1) = autocov(1) / variance
-        return autocov(data, 1)[0][1] / autocov(data, 0)[0][0]
+        return auto_cov(data, 1)[0][1] / auto_cov(data, 0)[0][0]
 
     # X is a matrix of m x n where m = len(X) - lag, n = lag + 1
     X = np.zeros((len(data) - lag, lag + 1))
@@ -104,10 +134,10 @@ def sample_acf(X, period):
     if period < 0 or period > len(X):
         raise Exception("invalid period")
 
-    variance = autocov(X, 0)[0][0]
+    variance = auto_cov(X, 0)[0][0]
     acfs = np.zeros(period + 1)
     for i in range(1, period + 1):
-        autocovariance = autocov(X, i)
+        autocovariance = auto_cov(X, i)
         # acf = autocov(h) / autocov(0) where h=lag and autocov(0) = variance(X)
         acfs[i] = autocovariance[0][1] / variance
     return acfs
@@ -122,7 +152,7 @@ def sample_pacf(X, period):
 
     pacfs = np.zeros(period + 1)
     for i in range(0, period + 1):
-        pacfs[i] = pautocorr(X, i)
+        pacfs[i] = p_auto_corr(X, i)
 
     return pacfs
 
