@@ -1,10 +1,62 @@
 import numpy as np
+import statsmodels.tsa.ar_model as ar
+import random
+
+
+# Greedy algorithm to find the best combination of lags.
+# Returns a sorted list with all
+def significant_lags(data, alpha, lags, beta):
+    removed_lags = []
+    lags = list(lags)
+    ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
+    summary = ar_model.summary(alpha).tables[1].data[1:]
+    p_values = np.array([float(i[4]) for i in summary[1:]])
+
+    while len(np.where(p_values < alpha)) != len(lags) or len(p_values) == 1:
+        ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
+        summary = ar_model.summary(0.05).tables[1].data[1:]
+        remove_lags, removed_lag, done = remove_lag(lags, removed_lags, summary, alpha, beta)
+        if done:
+            break
+        lags.remove(removed_lag)
+        p_values = np.array([float(i[4]) for i in summary[1:]])
+        # print(lags)
+    # ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
+    # print(ar_model.summary())
+    # print(lags)
+    # print(len(lags))
+    return sorted(lags)
+
+
+def remove_lag(lags, removedLags, summary, alpha, beta):
+    removed_lag = -1
+    biggest = 0
+    # control for greedy algorithm with beta:
+    if random.random() < beta:
+        removed_lag = np.random.choice(lags)
+        removedLags.append(removed_lag)
+        return removedLags, removed_lag, False
+    else:
+        # search for the least insignificant lag
+        for lag in lags:
+            if lag in removedLags:
+                continue
+            index = np.where(np.array(lags) == lag)[0][0]
+            p_value = float(summary[index + 1][4])
+            if p_value > biggest and p_value > alpha:
+                removed_lag = lag
+                biggest = p_value
+    if removed_lag != -1:
+        removedLags.append(removed_lag)
+    else:
+        return None, None, True
+    return removedLags, removed_lag, False
 
 
 # calculates covariance of series X with specified lag.
 # input is dataframe of data.csv and 0 < lag < len(x)
 # returns covariance matrix of Xt and Xt-lag (offdiagonal entries are the autocovariances)
-def autocov(X, lag):
+def auto_cov(X, lag):
     if lag < 0 or lag > len(X):
         raise Exception("invalid lag")
 
@@ -24,7 +76,7 @@ def autocov(X, lag):
 # X = [e, Xt-1, Xt-2, Xt-3], B = [B0, B1, B2, B3], Y = Xt
 # B_hat = (X^T X)^-1 X^T Y  where B^ contains the estimators for B0, B1, B2, B3
 # where B3 is an estimator for the partial autocorrelation
-def pautocorr(data, lag):
+def p_auto_corr(data, lag):
     if lag < 0 or lag > len(data):
         raise Exception("invalid lag")
     elif lag == 0:
@@ -73,3 +125,13 @@ def sample_pacf(X, period):
         pacfs[i] = pautocorr(X, i)
 
     return pacfs
+
+# acfs is an array with [0, acf(1), acf(2), ..., acf(period)]
+# acfs = helper_functions.sample_acf(data, period=50)
+# plt.bar(np.arange(1, len(acfs)), acfs[1:])
+# plt.show()
+
+# pacfs is an array with [pacf(0), pacf(1), pacf(2), ..., pacf(period)]
+# pacfs = helper_functions.sample_pacf(data, period=20)
+# plt.bar(np.arange(0, len(pacfs)), pacfs)
+# plt.show()
