@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.graphics.tsaplots as tsplots
 import statsmodels.tsa.arima.model as arma
@@ -17,8 +16,10 @@ tsplots.plot_pacf(data['gdp'], lags=12, zero=False)
 plt.show()
 
 # Opdracht 2
-# Set beta to 0 for a deterministic result. -> (lags = [1, 3, 22])
-lags = helper_functions.significant_lags(data, alpha=0.05, lags=np.arange(1, 25), beta=0)
+# Set beta to 0 for a deterministic result. -> (lags = [1])
+# lags = helper_functions.significant_lags(data, alpha=0.05, lags=np.arange(1, 25), beta=0)
+# print("Best params are: ", helper_functions.best_model(data, 0))
+lags = [1]
 p = len(lags)
 ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0))
 ar_model_fit = ar_model.fit()
@@ -76,3 +77,5 @@ plt.fill_between(lower_conf.index, lower_conf, higher_conf,
                  color='k', alpha=.15)
 plt.legend(loc='upper left', fontsize=13)
 plt.show()
+
+# print("Best Params: ", helper_functions.best_model(data, 0.5))

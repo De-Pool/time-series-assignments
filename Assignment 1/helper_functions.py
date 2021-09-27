@@ -1,25 +1,23 @@
 import numpy as np
-import statsmodels.tsa.ar_model as ar
 import statsmodels.tsa.arima.model as arma
 import random
 import sklearn.metrics as sk
 import math
 
 
-def best_model_gs(data):
-    beta = [0.2, 0.5]
-    smallest_rmse = 1
+def best_model(data, beta):
+    # AR(1) model rmse
+    smallest_rmse = 0.8602185697579161
     best_params = []
-    print(rmse_lags(data, [1]))
 
-    for b in beta:
-        for i in range(1000):
-            lags = significant_lags(data, 0.05, np.arange(1, random.randint(10, 39)), b)
-            rmse = rmse_lags(data, lags)
-            if rmse < smallest_rmse:
-                best_params = [lags, rmse]
-                smallest_rmse = rmse
-                print(best_params)
+    for i in range(2, 35):
+        lags = significant_lags(data, 0.05, np.arange(1, i), beta)
+        rmse = rmse_lags(data, lags)
+        print(lags, rmse)
+        if rmse < smallest_rmse:
+            best_params = [lags, rmse]
+            smallest_rmse = rmse
+            print(best_params)
 
     return best_params
 
@@ -38,23 +36,20 @@ def rmse_lags(data, lags):
 def significant_lags(data, alpha, lags, beta):
     removed_lags = []
     lags = list(lags)
-    ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
-    summary = ar_model.summary(alpha).tables[1].data[1:]
-    p_values = np.array([float(i[4]) for i in summary[1:]])
 
-    while len(np.where(p_values < alpha)) != len(lags) or len(p_values) == 1:
-        ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
-        summary = ar_model.summary(0.05).tables[1].data[1:]
+    ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+    summary = ar_model.summary(alpha).tables[1].data[1:]
+    p_values = np.array([float(i[4]) for i in summary[1:len(summary) - 1]])
+
+    while len(np.where(p_values < alpha)[0]) != len(p_values) or len(p_values) == 1:
         remove_lags, removed_lag, done = remove_lag(lags, removed_lags, summary, alpha, beta)
         if done:
             break
         lags.remove(removed_lag)
-        p_values = np.array([float(i[4]) for i in summary[1:]])
-        # print(lags)
-    # ar_model = ar.AutoReg(data['gdp'], lags=lags, old_names=False).fit()
-    # print(ar_model.summary())
-    # print(lags)
-    # print(len(lags))
+        ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+        summary = ar_model.summary(0.05).tables[1].data[1:]
+        p_values = np.array([float(i[4]) for i in summary[1:len(summary) - 1]])
+
     return sorted(lags)
 
 
