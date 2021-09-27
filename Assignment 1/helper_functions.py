@@ -41,7 +41,7 @@ def significant_lags(data, alpha, lags, beta):
     summary = ar_model.summary(alpha).tables[1].data[1:]
     p_values = np.array([float(i[4]) for i in summary[1:len(summary) - 1]])
 
-    while len(np.where(p_values < alpha)[0]) != len(p_values) or len(p_values) == 1:
+    while len(np.where(p_values < alpha)[0]) != len(p_values):
         remove_lags, removed_lag, done = remove_lag(lags, removed_lags, summary, alpha, beta)
         if done:
             break
