@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import statsmodels.graphics.tsaplots as tsplots
 import statsmodels.tsa.arima.model as arma
 import helper_functions
+import statistics
 
 # data is a dataframe, first column is year, second column is GDP
 data = pd.read_csv('./data.csv', delimiter=',', names=['year', 'gdp'], skiprows=1)
@@ -28,13 +29,20 @@ print(ar_model_fit.summary())
 fittedValues = ar_model_fit.fittedvalues.values
 plt.plot(data['datetime'], fittedValues, label="Fitted AR(" + str(p) + ")  model")
 plt.plot(data['datetime'], data['gdp'], label="Data")
+plt.xlabel('years')
+plt.ylabel('growth rate percentages')
 plt.legend()
 plt.show()
 
 # Opdracht 3
 residuals = pd.DataFrame(ar_model_fit.resid)
+print(f'residuals: {residuals.mean()}')
 residuals.plot(title="Residuals")
+plt.xlabel('periods (in quarters)')
+plt.ylabel('growth rate percentages')
+plt.show()
 tsplots.plot_acf(residuals, zero=False, lags=50)
+plt.xlabel('lag amount')
 plt.show()
 
 # Opdracht 4
@@ -78,4 +86,4 @@ plt.fill_between(lower_conf.index, lower_conf, higher_conf,
 plt.legend(loc='upper left', fontsize=13)
 plt.show()
 
-# print("Best Params: ", helper_functions.best_model(data, 0.5))
+#  print("Best Params: ", helper_functions.best_model(data, 0.5))
