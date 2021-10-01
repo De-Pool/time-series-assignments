@@ -3,6 +3,50 @@ import statsmodels.tsa.arima.model as arma
 import random
 import sklearn.metrics as sk
 import math
+import statsmodels.formula.api as smf
+import pandas as pd
+
+
+
+# ADL(p, q), data = data_assign_p2.csv
+# returns OLS model
+def adl_ols(p, q, data):
+    model_data = pd.DataFrame()
+    formula = 'Yt ~ 1 + '
+    length = len(data) - max(p, q)
+    Yt = data['UN_RATE'].values[:length]
+    model_data['Yt'] = Yt
+    # add Yt to formula
+    for lag in range(1, p + 1):
+        phi_string = 'phi' + str(lag)
+        formula += phi_string
+        if lag != p + 1:
+            formula += ' + '
+        phi_data = ols_phi_data(data, lag, length)
+        model_data[phi_string] = phi_data
+    # add Xt to formula
+    for lag in range(q + 1):
+        beta_string = 'beta' + str(lag)
+        formula += beta_string
+        if lag != q:
+            formula += ' + '
+        beta_data = ols_beta_data(data, lag, length)
+        model_data[beta_string] = beta_data
+
+    model = smf.ols(formula=formula, data=model_data)
+    return model
+
+
+def ols_phi_data(data, lag, length):
+    unemployment = data['UN_RATE'].values
+    end_index = length + lag
+    return unemployment[lag:end_index]
+
+
+def ols_beta_data(data, lag, length):
+    gdp = data['GDP_QGR'].values
+    end_index = length + lag
+    return gdp[lag:end_index]
 
 
 def best_model(data, beta):
