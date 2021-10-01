@@ -23,7 +23,7 @@ def best_model(data, beta):
 
 
 def rmse_lags(data, lags):
-    ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+    ar_model = arma.ARIMA(data['GDP_QGR'], order=(lags, 0, 0)).fit()
     forecast = ar_model.get_forecast(8)
     result = forecast.prediction_results.results.forecasts[0]
     actualData = [-1.63, 0.28, 0.33, 0.66, 1.59, 0.51, 0.71, 0.81]
@@ -37,7 +37,7 @@ def significant_lags(data, alpha, lags, beta):
     removed_lags = []
     lags = list(lags)
 
-    ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+    ar_model = arma.ARIMA(data['GDP_QGR'], order=(lags, 0, 0)).fit()
     summary = ar_model.summary(alpha).tables[1].data[1:]
     p_values = np.array([float(i[4]) for i in summary[1:len(summary) - 1]])
 
@@ -46,7 +46,7 @@ def significant_lags(data, alpha, lags, beta):
         if done:
             break
         lags.remove(removed_lag)
-        ar_model = arma.ARIMA(data['gdp'], order=(lags, 0, 0)).fit()
+        ar_model = arma.ARIMA(data['GDP_QGR'], order=(lags, 0, 0)).fit()
         summary = ar_model.summary(0.05).tables[1].data[1:]
         p_values = np.array([float(i[4]) for i in summary[1:len(summary) - 1]])
 
