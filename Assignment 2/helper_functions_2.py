@@ -7,15 +7,130 @@ import statsmodels.formula.api as smf
 import pandas as pd
 
 
+# p is an array of p, q is an array of q, beta is used to control for greedy algorithm.
+def significant_adl(data, alpha, p, q, beta, no_p, no_q):
+    removed_p_arr = []
+    removed_q_arr = []
+    p = list(p)
+    q = list(q)
+
+    adl_model = adl_ols_arr(p, q, data).fit()
+    summary = adl_model.summary(alpha).tables[1].data[2:]
+    p_values = np.array([float(i[4]) for i in summary[:len(summary)]])
+    while len(np.where(p_values < alpha)[0]) != len(p_values):
+        removed_p_arr, removed_q_arr, removed_p, removed_q, done = remove_p_q(p, q, removed_p_arr, removed_q_arr,
+                                                                              summary, alpha, beta, no_p, no_q)
+        if done:
+            break
+        if removed_q == -1:
+            p.remove(removed_p)
+        else:
+            q.remove(removed_q)
+        adl_model = adl_ols_arr(p, q, data).fit()
+        summary = adl_model.summary(alpha).tables[1].data[2:]
+        p_values = np.array([float(i[4]) for i in summary[:len(summary)]])
+
+    return sorted(p), sorted(q)
+
+
+# returns removed_p_arr, removed_q_arr, removed_p, removed_q, done
+def remove_p_q(p, q, removed_p_arr, removed_q_arr, summary, alpha, beta, no_p, no_q):
+    removed_p = -1
+    removed_q = -1
+    biggest_p = True
+    biggest = 0
+    # control for greedy algorithm with beta:
+    if random.random() < beta:
+        return None, None, None, None, True
+        # removed_lag = np.random.choice(lags)
+        # removedLags.append(removed_lag)
+        # return removedLags, removed_lag, False
+    else:
+        # search for the least insignificant lag
+        if not no_p:
+            for p_int in p:
+                if p_int in removed_p_arr:
+                    continue
+                index = np.where(np.array(p) == p_int)[0][0]
+                p_value = float(summary[index][4])
+                if p_value > biggest and p_value > alpha:
+                    removed_p = p_int
+                    biggest = p_value
+        if not no_q:
+            for q_int in q:
+                if q_int in removed_q_arr:
+                    continue
+                index = np.where(np.array(q) == q_int)[0][0] + len(p)
+                p_value = float(summary[index][4])
+                if p_value > biggest and p_value > alpha:
+                    biggest_p = False
+                    removed_q = q_int
+                    biggest = p_value
+
+    if biggest_p:
+        if removed_p != -1:
+            removed_p_arr.append(removed_p)
+            return removed_p_arr, removed_q_arr, removed_p, -1, False
+        else:
+            return None, None, None, None, True
+    else:
+        removed_q_arr.append(removed_q)
+        return removed_p_arr, removed_q_arr, -1, removed_q, False
+
+
+# p and q are both arrays.
+def adl_ols_arr(p, q, data):
+    model_data = pd.DataFrame()
+    formula = 'Yt ~ 1 + '
+    length = 0
+    if len(p) == 0 and len(q) == 0:
+        return None
+    elif len(p) == 0:
+        length = len(data) - max(q)
+    elif len(q) == 0:
+        length = len(data) - max(p)
+    else:
+        length = len(data) - max(max(p), max(q))
+    Yt = data['UN_RATE'].values[:length]
+    model_data['Yt'] = Yt
+    counter = 0
+    # add Yt to formula
+    for lag in p:
+        phi_string = 'phi' + str(lag)
+        formula += phi_string
+        if counter == len(p) - 1 and len(q) == 0:
+            formula = formula
+        else:
+            formula += ' + '
+        phi_data = ols_phi_data(data, lag, length)
+        model_data[phi_string] = phi_data
+        counter += 1
+    # add Xt to formula
+    counter = 0
+    for lag in q:
+        beta_string = 'beta' + str(lag)
+        formula += beta_string
+        if counter != len(q) - 1:
+            formula += ' + '
+        beta_data = ols_beta_data(data, lag, length)
+        model_data[beta_string] = beta_data
+        counter += 1
+
+    model = smf.ols(formula=formula, data=model_data)
+    return model
+
 
 # ADL(p, q), data = data_assign_p2.csv
+#
 # returns OLS model
 def adl_ols(p, q, data):
     model_data = pd.DataFrame()
     formula = 'Yt ~ 1 + '
+    # the maximum length of each vector is determined by the highest lag 
     length = len(data) - max(p, q)
     Yt = data['UN_RATE'].values[:length]
     model_data['Yt'] = Yt
+    # we sum here from (1, p), since Yt is dependent on Yt-1, Yt-2 ... Yt-p
     # add Yt to formula
     for lag in range(1, p + 1):
         phi_string = 'phi' + str(lag)
@@ -24,6 +139,7 @@ def adl_ols(p, q, data):
             formula += ' + '
         phi_data = ols_phi_data(data, lag, length)
         model_data[phi_string] = phi_data
+    # we sum here from (0, q) since Yt is dependent on Xt, Xt-1, ..., Xt-q
     # add Xt to formula
     for lag in range(q + 1):
         beta_string = 'beta' + str(lag)
