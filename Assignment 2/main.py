@@ -50,6 +50,7 @@ plt.show()
 p, q = 1, 0
 adl_model, formula = helper_functions_2.adl_ols(p, q, data)
 adl_model_fit = adl_model.fit()
+print(adl_model_fit.summary())
 plt.plot(data['datetime'].values[len(data['datetime'].values) - len(adl_model_fit.fittedvalues.values):], adl_model_fit.fittedvalues.values, label="Fitted ADL(" + str(p) + "," + str(q) + ")  model")
 plt.plot(data['datetime'], data['UN_RATE'], label="Data")
 plt.xlabel('years')
