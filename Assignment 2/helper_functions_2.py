@@ -6,9 +6,68 @@ import math
 import statsmodels.formula.api as smf
 import pandas as pd
 
+# Assignment 2
+
+# This function is used to create an ADL model object.
+# Usage:
+# p, q = 1, 0
+# adl_model = helper_functions_2.adl_ols(p, q, data)
+# adl_model_fit = adl_model.fit()
+# The documentation on adl_model_fit can be found on:
+# https://www.statsmodels.org/stable/generated/statsmodels.regression.linear_model.RegressionResults.html
+def adl_ols(p, q, data):
+    model_data = pd.DataFrame()
+    formula = 'Yt ~ 1 + '
+    # the maximum length of each vector is determined by the highest lag
+    length = len(data) - max(p, q)
+    Yt = data['UN_RATE'].values[:length]
+    model_data['Yt'] = Yt
+    # we sum here from (1, p), since Yt is dependent on Yt-1, Yt-2 ... Yt-p
+    # add Yt to formula
+    for lag in range(1, p + 1):
+        phi_string = 'phi' + str(lag)
+        formula += phi_string
+        if lag != p + 1:
+            formula += ' + '
+        phi_data = ols_phi_data(data, lag, length)
+        model_data[phi_string] = phi_data
+    # we sum here from (0, q) since Yt is dependent on Xt, Xt-1, ..., Xt-q
+    # add Xt to formula
+    for lag in range(q + 1):
+        beta_string = 'beta' + str(lag)
+        formula += beta_string
+        if lag != q:
+            formula += ' + '
+        beta_data = ols_beta_data(data, lag, length)
+        model_data[beta_string] = beta_data
+
+    model = smf.ols(formula=formula, data=model_data)
+    return model, formula
+
+
+# p and q are ints
+def significant_adl(data, alpha, p, q, no_p, no_q):
+    q_arr = np.arange(0, q + 1)
+    p_arr = np.arange(1, p + 1)
+    significant_models = []
+
+    if no_p:
+        p_arr = [p]
+    elif no_q:
+        q_arr = [q]
+
+    for p_int in p_arr:
+        for q_int in q_arr:
+            adl_model = adl_ols(p_int, q_int, data).fit()
+            summary = adl_model.summary(alpha).tables[1].data[2:]
+            p_values = np.array([float(i[4]) for i in summary[:len(summary)]])
+            if len(np.where(p_values < alpha)[0]) == len(p_values):
+                significant_models.append([p_int, q_int])
+    return significant_models
+
 
 # p is an array of p, q is an array of q, beta is used to control for greedy algorithm.
-def significant_adl(data, alpha, p, q, beta, no_p, no_q):
+def significant_adl_arr(data, alpha, p, q, beta, no_p, no_q):
     removed_p_arr = []
     removed_q_arr = []
     p = list(p)
@@ -120,39 +179,6 @@ def adl_ols_arr(p, q, data):
     return model
 
 
-# ADL(p, q), data = data_assign_p2.csv
-#
-# returns OLS model
-def adl_ols(p, q, data):
-    model_data = pd.DataFrame()
-    formula = 'Yt ~ 1 + '
-    # the maximum length of each vector is determined by the highest lag 
-    length = len(data) - max(p, q)
-    Yt = data['UN_RATE'].values[:length]
-    model_data['Yt'] = Yt
-    # we sum here from (1, p), since Yt is dependent on Yt-1, Yt-2 ... Yt-p
-    # add Yt to formula
-    for lag in range(1, p + 1):
-        phi_string = 'phi' + str(lag)
-        formula += phi_string
-        if lag != p + 1:
-            formula += ' + '
-        phi_data = ols_phi_data(data, lag, length)
-        model_data[phi_string] = phi_data
-    # we sum here from (0, q) since Yt is dependent on Xt, Xt-1, ..., Xt-q
-    # add Xt to formula
-    for lag in range(q + 1):
-        beta_string = 'beta' + str(lag)
-        formula += beta_string
-        if lag != q:
-            formula += ' + '
-        beta_data = ols_beta_data(data, lag, length)
-        model_data[beta_string] = beta_data
-
-    model = smf.ols(formula=formula, data=model_data)
-    return model
-
-
 def ols_phi_data(data, lag, length):
     unemployment = data['UN_RATE'].values
     end_index = length + lag
@@ -164,7 +190,7 @@ def ols_beta_data(data, lag, length):
     end_index = length + lag
     return gdp[lag:end_index]
 
-
+# Assignment 1
 def best_model(data, beta):
     # AR(1) model rmse
     smallest_rmse = 0.8602185697579161
