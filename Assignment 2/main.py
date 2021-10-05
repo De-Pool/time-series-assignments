@@ -27,6 +27,8 @@ data['datetime'] = pd.to_datetime(data['obs'])
 
 # Opdracht 1
 # AR model:
+# lags 1 and 3 are both significant lags
+# (see significant_lags() --> return significant lags for the AR(p) model, where p is an array.
 lags = [1, 3]
 p = len(lags)
 ar_model = arma.ARIMA(data['GDP_QGR'], order=(lags, 0, 0))
@@ -41,8 +43,9 @@ plt.legend()
 plt.show()
 
 # ADL Model
-# If we use General-Specific starting at lag 4, we get the following model
-# ADL(2, 1) p = [1, 3], q = [1]
+# significant_adl_arr() return a deterministic result when beta = 0
+# p = [1, 3], q = [1]
+# So our model will be Yt = alpha + phi1*Yt-1 + phi3*Yt-3 + beta1*Xt-1
 p, q = helper_functions_2.significant_adl_arr(data, 0.05, np.arange(1, 5),
                                               np.arange(0, 5), 0, no_p=False, no_q=False)
 adl_model = helper_functions_2.adl_ols_arr(p, q, data)
@@ -56,3 +59,10 @@ plt.xlabel('Period (Quarters)')
 plt.ylabel('Unemployment Rate (Percentage)')
 plt.legend()
 plt.show()
+
+forecast_dates = ["2014Q2", "2014Q3", "2014Q4", "2015Q1", "2015Q2", "2015Q3", "2015Q4", "2016Q1"]
+# 8 steps ahead forecast
+
+forecast_ar = ar_model_fit.forecast(8).values
+forecast_series_ar = pd.Series(forecast_ar, index=forecast_dates)
+print(forecast_series_ar)
