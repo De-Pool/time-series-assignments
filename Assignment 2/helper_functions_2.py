@@ -6,64 +6,74 @@ import math
 import statsmodels.formula.api as smf
 import pandas as pd
 
+
 # Assignment 2
 
-# This function is used to create an ADL model object.
-# Usage:
-# p, q = 1, 0
-# adl_model = helper_functions_2.adl_ols(p, q, data)
-# adl_model_fit = adl_model.fit()
-# The documentation on adl_model_fit can be found on:
-# https://www.statsmodels.org/stable/generated/statsmodels.regression.linear_model.RegressionResults.html
-def adl_ols(p, q, data):
+# p and q are both arrays.
+def adl_ols_arr(p, q, data):
     model_data = pd.DataFrame()
     formula = 'Yt ~ 1 + '
-    # the maximum length of each vector is determined by the highest lag
-    length = len(data) - max(p, q)
-    Yt = data['UN_RATE'].values[:length]
+    if len(p) == 0 and len(q) == 0:
+        return None
+    elif len(p) == 0:
+        length = len(data) - max(q)
+    elif len(q) == 0:
+        length = len(data) - max(p)
+    else:
+        length = len(data) - max(max(p), max(q))
+    Yt = data['UN_RATE'].values[len(data) - length:]
     model_data['Yt'] = Yt
-    # we sum here from (1, p), since Yt is dependent on Yt-1, Yt-2 ... Yt-p
+    counter = 0
     # add Yt to formula
-    for lag in range(1, p + 1):
+    for lag in p:
         phi_string = 'phi' + str(lag)
         formula += phi_string
-        if lag != p + 1:
+        if counter == len(p) - 1 and len(q) == 0:
+            formula = formula
+        else:
             formula += ' + '
-        phi_data = ols_phi_data(data, lag, length)
+        phi_data = ols_phi_data(data, lag, length, p[-1], True)
         model_data[phi_string] = phi_data
-    # we sum here from (0, q) since Yt is dependent on Xt, Xt-1, ..., Xt-q
+        counter += 1
     # add Xt to formula
-    for lag in range(q + 1):
+    counter = 0
+    for lag in q:
         beta_string = 'beta' + str(lag)
         formula += beta_string
-        if lag != q:
+        if counter != len(q) - 1:
             formula += ' + '
-        beta_data = ols_beta_data(data, lag, length)
+        beta_data = ols_beta_data(data, lag, length, q[-1], True)
         model_data[beta_string] = beta_data
+        counter += 1
 
     model = smf.ols(formula=formula, data=model_data)
-    return model, formula
+    return model
 
 
-# p and q are ints
-def significant_adl(data, alpha, p, q, no_p, no_q):
-    q_arr = np.arange(0, q + 1)
-    p_arr = np.arange(1, p + 1)
-    significant_models = []
+def ols_phi_data(data, lag, length, maxlag, arr):
+    unemployment = data['UN_RATE'].values
+    if not arr:
+        end_index = length - lag
+        return unemployment[maxlag - lag:end_index]
+    else:
+        maxlength = length
+        length = len(unemployment)
+        end_index = length - lag
+        begin_index = end_index - maxlength
+        return unemployment[begin_index:end_index]
 
-    if no_p:
-        p_arr = [p]
-    elif no_q:
-        q_arr = [q]
 
-    for p_int in p_arr:
-        for q_int in q_arr:
-            adl_model = adl_ols(p_int, q_int, data).fit()
-            summary = adl_model.summary(alpha).tables[1].data[2:]
-            p_values = np.array([float(i[4]) for i in summary[:len(summary)]])
-            if len(np.where(p_values < alpha)[0]) == len(p_values):
-                significant_models.append([p_int, q_int])
-    return significant_models
+def ols_beta_data(data, lag, length, maxlag, arr):
+    gdp = data['GDP_QGR'].values
+    if not arr:
+        end_index = length - lag
+        return gdp[maxlag - lag:end_index]
+    else:
+        maxlength = length
+        length = len(gdp)
+        end_index = length - lag
+        begin_index = end_index - maxlength
+        return gdp[begin_index:end_index]
 
 
 # p is an array of p, q is an array of q, beta is used to control for greedy algorithm.
@@ -137,58 +147,75 @@ def remove_p_q(p, q, removed_p_arr, removed_q_arr, summary, alpha, beta, no_p, n
         return removed_p_arr, removed_q_arr, -1, removed_q, False
 
 
-# p and q are both arrays.
-def adl_ols_arr(p, q, data):
-    model_data = pd.DataFrame()
-    formula = 'Yt ~ 1 + '
-    length = 0
-    if len(p) == 0 and len(q) == 0:
-        return None
-    elif len(p) == 0:
-        length = len(data) - max(q)
-    elif len(q) == 0:
-        length = len(data) - max(p)
-    else:
-        length = len(data) - max(max(p), max(q))
-    Yt = data['UN_RATE'].values[:length]
-    model_data['Yt'] = Yt
-    counter = 0
-    # add Yt to formula
-    for lag in p:
-        phi_string = 'phi' + str(lag)
-        formula += phi_string
-        if counter == len(p) - 1 and len(q) == 0:
-            formula = formula
-        else:
-            formula += ' + '
-        phi_data = ols_phi_data(data, lag, length)
-        model_data[phi_string] = phi_data
-        counter += 1
-    # add Xt to formula
-    counter = 0
-    for lag in q:
-        beta_string = 'beta' + str(lag)
-        formula += beta_string
-        if counter != len(q) - 1:
-            formula += ' + '
-        beta_data = ols_beta_data(data, lag, length)
-        model_data[beta_string] = beta_data
-        counter += 1
+# This function is used to create an ADL model object.
+# Usage:
+# p, q = 1, 0
+# adl_model = helper_functions_2.adl_ols(p, q, data)
+# adl_model_fit = adl_model.fit()
+# The documentation on adl_model_fit can be found on:
+# https://www.statsmodels.org/stable/generated/statsmodels.regression.linear_model.RegressionResults.html
+# def adl_ols(p, q, data):
+#     model_data = pd.DataFrame()
+#     formula = 'Yt ~ 1 + '
+#     # the maximum length of each vector is determined by the highest lag
+#     length = len(data)
+#     Yt = data['UN_RATE'].values[max(p, q):]
+#     model_data['Yt'] = Yt
+#     # we sum here from (1, p), since Yt is dependent on Yt-1, Yt-2 ... Yt-p
+#     # add Yt to formula
+#     for lag in range(1, p + 1):
+#         phi_string = 'phi' + str(lag)
+#         formula += phi_string
+#         if lag != p + 1:
+#             formula += ' + '
+#         phi_data = ols_phi_data(data, lag, length, p, False)
+#         model_data[phi_string] = phi_data
+#     # we sum here from (0, q) since Yt is dependent on Xt, Xt-1, ..., Xt-q
+#     # add Xt to formula
+#     for lag in range(q + 1):
+#         beta_string = 'beta' + str(lag)
+#         formula += beta_string
+#         if lag != q:
+#             formula += ' + '
+#         beta_data = ols_beta_data(data, lag, length, q, False)
+#         model_data[beta_string] = beta_data
+#
+#     model = smf.ols(formula=formula, data=model_data)
+#     return model, formula
+#
+#
+# # p and q are ints
+# def significant_adl(data, alpha, p, q, no_p, no_q):
+#     q_arr = np.arange(0, q + 1)
+#     p_arr = np.arange(1, p + 1)
+#     significant_models = []
+#
+#     if no_p:
+#         p_arr = [p]
+#     elif no_q:
+#         q_arr = [q]
+#
+#     for p_int in p_arr:
+#         for q_int in q_arr:
+#             adl_model, formula = adl_ols(p_int, q_int, data)
+#             adl_model_fit = adl_model.fit()
+#             summary = adl_model_fit.summary(alpha).tables[1].data[2:]
+#             p_values = np.array([float(i[4]) for i in summary[:len(summary)]])
+#             if len(np.where(p_values < alpha)[0]) == len(p_values):
+#                 significant_models.append([p_int, q_int])
+#     return significant_models
 
-    model = smf.ols(formula=formula, data=model_data)
-    return model
 
-
-def ols_phi_data(data, lag, length):
-    unemployment = data['UN_RATE'].values
-    end_index = length + lag
-    return unemployment[lag:end_index]
-
-
-def ols_beta_data(data, lag, length):
-    gdp = data['GDP_QGR'].values
-    end_index = length + lag
-    return gdp[lag:end_index]
+# def ols_phi_data(data, lag, length):
+#     unemployment = data['UN_RATE'].values
+#     end_index = length + lag
+#     return unemployment[lag:end_index]
+#
+#
+# def ols_beta_data(data, lag, length):
+#     gdp = data['GDP_QGR'].values
+#     end_index = length + lag
+#     return gdp[lag:end_index]
 
 # Assignment 1
 def best_model(data, beta):
